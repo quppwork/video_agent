@@ -1,7 +1,11 @@
-@"
 .venv/
 __pycache__/
 *.pyc
 .env
 .cursor/
-"@ | Out-File -Encoding utf8 .gitignore
+
+# 个人笔记，不上传
+docs/个人思考文档.md
+docs/study.md
+
+tests_video/
