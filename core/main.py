@@ -1,10 +1,9 @@
 """
 核心模块主函数
 """
-import argparse
+import argparse  # 命令行参数解析模块
 
-from core.pipeline import run_pipeline
-
+from core.pipeline import run_pipeline  # 导入流水线模块
 
 
 def main()->None:
