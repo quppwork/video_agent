@@ -1,0 +1,4 @@
+#uv pip install -r requirements.txt
+openai-whisper
+openai
+python-dotenv
