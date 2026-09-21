@@ -1,15 +1,18 @@
 """
-流水线模块
+业务层：流水线模块
 采用pipeline模式，将整个流程分为多个步骤，每个步骤之间通过管道连接，实现数据流式处理
 提取音频 -> 使用whisper转写音频 -> 保存时间戳文本 -> 使用LLM模型生成摘要 -> 保存摘要
 """
-import os  # os模块
+import os
 import subprocess  # 子进程处理模块
 from pathlib import Path  # 路径处理模块
 
-import whisper  # whisper模块
+import whisper
 from dotenv import load_dotenv  # 环境变量处理模块
 from openai import OpenAI  # OpenAI模块
+
+# 全局变量,用于存储whisper模型
+_whisper_model = None
 
 
 # 流水线主函数
@@ -73,6 +76,19 @@ def extract_audio(video: Path, out_dir: Path)->Path:
 
 
 
+# 对whisper模型进行懒加载,只有在第一次使用时加载模型
+def start_whisper_model():
+    """
+    启动whisper模型
+    """
+    global _whisper_model# 全局变量,用于存储whisper模型
+    if _whisper_model is None:
+        _whisper_model = whisper.load_model("base")
+        print("whisper模型已加载")
+    return _whisper_model
+
+
+
 # 使用whisper提取音频函数
 def transcribe_with_whisper(audio_path: Path)->str:
     """
@@ -82,7 +98,7 @@ def transcribe_with_whisper(audio_path: Path)->str:
     Returns:
         str: 文本
     """
-    model = whisper.load_model("base") # 创建whisper模型-base模型
+    model = start_whisper_model() # 创建whisper模型-base模型
     text_result = model.transcribe(str(audio_path), language="zh") # 音频转文字,语言为中文
 
     # 格式化时间函数
