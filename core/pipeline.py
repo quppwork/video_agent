@@ -1,6 +1,7 @@
 """
 流水线模块
 采用pipeline模式，将整个流程分为多个步骤，每个步骤之间通过管道连接，实现数据流式处理
+提取音频 -> 使用whisper转写音频 -> 保存时间戳文本 -> 使用LLM模型生成摘要 -> 保存摘要
 """
 import os  # os模块
 import subprocess  # 子进程处理模块
@@ -12,7 +13,7 @@ from openai import OpenAI  # OpenAI模块
 
 
 # 流水线主函数
-def run_pipeline(video_path: str)->str:
+def run_pipeline(video_path: str,out_dir: Path)->str:
     """
     流水线主函数,处理视频文件
     Args:
@@ -28,20 +29,21 @@ def run_pipeline(video_path: str)->str:
         print(f"校验通过: {path}文件存在") # 打印成功信息
     
     # 提取音频
-    out_dir = Path("tests_video/test_video_output")
     audio_path = extract_audio(path, out_dir) # 提取音频
 
     # 使用whisper转写音频
     whisper_text = transcribe_with_whisper(audio_path) # 使用whisper转写音频
+    print(f"whisper_text: \n{whisper_text}") # 打印时间戳文本
+    # 保存时间戳文本
+    save_timestamp_text(whisper_text, out_dir, path) # 保存时间戳文本
 
     # 使用LLM模型生成摘要
     summary = summarize_with_llm(whisper_text) # 使用LLM模型生成摘要(返回摘要)
-    save_choice = input("是否保存摘要? (y/n): ") # 询问是否保存摘要
-    if save_choice == "y": # 如果选择保存摘要(输入y)
-        save_summary(summary, out_dir, path) # 保存摘要
-    else: # 如果选择不保存摘要(输入n)
-        print("摘要未保存") # 打印摘要未保存信息
-    return summary # 返回摘要
+
+    # 保存摘要
+    save_summary(summary, out_dir, path) # 保存摘要
+
+    return summary # 返回摘要,测试通过
 
 
 
@@ -81,8 +83,46 @@ def transcribe_with_whisper(audio_path: Path)->str:
         str: 文本
     """
     model = whisper.load_model("base") # 创建whisper模型-base模型
-    result = model.transcribe(str(audio_path), language="zh") # 音频转文字,语言为中文
-    return result["text"] # 返回文本
+    text_result = model.transcribe(str(audio_path), language="zh") # 音频转文字,语言为中文
+
+    # 格式化时间函数
+    def format_time(seconds: float)->str:
+        """
+        格式化时间函数,将时间转换为时间戳文本
+        Args:
+            seconds: 时间
+        Returns:
+            str: 时间戳文本
+        """
+        total_seconds = int(seconds) # 将时间转换为整数
+        m,s = divmod(total_seconds, 60) # 将时间转换为分钟和秒
+        return f"{m:02d}:{s:02d}" # 返回时间戳文本,格式为: 分钟:秒,不足2位补0
+    
+    text_lines = [] # 创建行列表,定义为text_lines列表
+    for segment in text_result["segments"]:
+        start_time = format_time(segment["start"])# 获取开始时间
+        end_time = format_time(segment["end"])# 获取结束时间
+        segment_text = segment["text"].strip()# 获取文本,并去除空格
+        if not segment_text:
+            continue
+        text_lines.append(f"[{start_time} - {end_time}]: {segment_text}")# 添加行
+    
+    return "\n".join(text_lines) # 返回文本,将行列表转换为文本,使用换行符连接
+
+
+
+# 保存时间戳文本函数
+def save_timestamp_text(text_lines: str, out_dir: Path, path: Path)->None:
+    """
+    保存时间戳文本函数,将时间戳文本保存到文件
+    Args:
+        text_lines: 时间戳文本列表
+        out_dir: 输出目录
+        path: 视频路径
+    """
+    timestamp_path = out_dir / f"{path.stem}_timestamp.txt" # 创建时间戳路径
+    timestamp_path.write_text(text_lines, encoding="utf-8") # 保存时间戳文本(写入文件,编码为utf-8)
+    print(f"时间戳文本已保存到: {timestamp_path}") # 打印时间戳文本保存成功信息
 
 
 
@@ -109,7 +149,7 @@ def summarize_with_llm(text: str)->str:
         base_url=os.getenv("AI_LLM_BASE_URL"),# API地址
         )
     promote_text = """
-    你是一个摘要生成器,请根据输入的文本生成摘要。
+    你是一个摘要生成器,请根据输入的文本生成摘要，需要包含时间戳，时间戳格式为: 开始时间 - 结束时间: 文本，时间必须来源于输入的文本。
     """
     response = llm_client.chat.completions.create(# 创建聊天完成,使用环境变量中的模型和API密钥
         model=os.getenv("AI_LLM_MODEL"),
@@ -136,8 +176,10 @@ def save_summary(summary: str, out_dir: Path, path: Path)->None:
     print(f"摘要已保存到: {summary_path}") # 打印摘要保存成功信息
 
 
+
 # 测试函数
 if __name__ == "__main__":
     test_text = "你好,世界"
     test_summary = summarize_with_llm(test_text)
     print(test_summary)
+

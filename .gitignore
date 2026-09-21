@@ -3,9 +3,11 @@ __pycache__/
 *.pyc
 .env
 .cursor/
+.idea/
 
 # 个人笔记，不上传
-docs/个人思考文档.md
+docs/0.2.md
 docs/study.md
+docs/过期文档/
 
 tests_video/
