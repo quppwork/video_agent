@@ -6,7 +6,7 @@ __pycache__/
 .idea/
 
 # 个人笔记，不上传
-docs/0.2.md
+docs/**/-**.md
 docs/study.md
 docs/过期文档/
 

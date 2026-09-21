@@ -24,24 +24,24 @@ def run_pipeline(video_path: str,out_dir: Path)->str:
     path = Path(video_path) # 将视频路径转换为Path对象
 
     if not path.is_file(): # 判断文件是否存在
-        raise FileNotFoundError(f"文件不存在: {path}") # 抛出文件不存在异常
+        raise FileNotFoundError(f"文件不存在: {path}")
     else:
-        print(f"校验通过: {path}文件存在") # 打印成功信息
+        print(f"校验通过: {path}文件存在")
     
     # 提取音频
-    audio_path = extract_audio(path, out_dir) # 提取音频
+    audio_path = extract_audio(path, out_dir)
 
     # 使用whisper转写音频
-    whisper_text = transcribe_with_whisper(audio_path) # 使用whisper转写音频
+    whisper_text = transcribe_with_whisper(audio_path)
     print(f"whisper_text: \n{whisper_text}") # 打印时间戳文本
     # 保存时间戳文本
-    save_timestamp_text(whisper_text, out_dir, path) # 保存时间戳文本
+    save_timestamp_text(whisper_text, out_dir, path)
 
     # 使用LLM模型生成摘要
-    summary = summarize_with_llm(whisper_text) # 使用LLM模型生成摘要(返回摘要)
+    summary = summarize_with_llm(whisper_text)
 
     # 保存摘要
-    save_summary(summary, out_dir, path) # 保存摘要
+    save_summary(summary, out_dir, path)
 
     return summary # 返回摘要,测试通过
 
