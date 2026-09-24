@@ -18,25 +18,23 @@ _whisper_model = None
 # 流水线主函数
 def run_pipeline(video_path: str,out_dir: Path)->str:
     """
-    流水线主函数,处理视频文件
+    流水线主函数：校验 → 抽音频 → 转写 → 摘要 → 落盘。
     Args:
-        video_path: 视频路径
+        video_path: 本地视频路径
+        out_dir: 输出目录（wav / 转写 / 摘要）
     Returns:
-        str: 成功信息
+        str: 摘要文本
     """
     path = Path(video_path) # 将视频路径转换为Path对象
 
     if not path.is_file(): # 判断文件是否存在
         raise FileNotFoundError(f"文件不存在: {path}")
-    else:
-        print(f"校验通过: {path}文件存在")
-    
-    # 提取音频
+    print(f"校验通过: {path}")
+
     audio_path = extract_audio(path, out_dir)
 
     # 使用whisper转写音频
     whisper_text = transcribe_with_whisper(audio_path)
-    print(f"whisper_text: \n{whisper_text}") # 打印时间戳文本
     # 保存时间戳文本
     save_timestamp_text(whisper_text, out_dir, path)
 
@@ -60,19 +58,26 @@ def extract_audio(video: Path, out_dir: Path)->Path:
     Returns:
         Path: 音频路径
     """
-    out_dir.mkdir(parents=True, exist_ok=True) # 创建输出目录
     audio_path = out_dir / f"{video.stem}.wav" # 创建音频路径
-    cmd = [
-        "ffmpeg","-y",# 使用ffmpeg命令,强制覆盖输出文件
-        "-i", str(video),# 设置视频路径
-        "-q:a", "0",# 设置音频质量为0
-        "-map", "a",# 映射音频流
-        str(audio_path),# 设置音频路径
-    ]
-    result = subprocess.run(cmd, check=False, capture_output=True, text=True) # 赋值result执行命令
-    if result.returncode != 0: # 判断命令是否执行失败
-        raise RuntimeError(f"提取音频失败: {result.stderr}") # 抛出提取音频失败异常
-    return audio_path # 返回音频路径
+    out_dir.mkdir(parents=True, exist_ok=True) # 创建输出目录
+    force = os.getenv("FORCE_EXTRACT_AUDIO", "").strip() in ("1", "true", "True") # 强制重抽
+    # 如果音频文件存在,则直接返回音频路径
+    if audio_path.is_file() and not force:
+        print(f"音频文件已存在: {audio_path}")
+        return audio_path
+    else:
+        # 如果音频文件不存在,则使用ffmpeg提取音频
+        cmd = [
+            "ffmpeg","-y",# 使用ffmpeg命令,强制覆盖输出文件
+            "-i", str(video),# 设置视频路径
+            "-q:a", "0",# 设置音频质量为0
+            "-map", "a",# 映射音频流
+            str(audio_path),# 设置音频路径
+        ]
+        result = subprocess.run(cmd, check=False, capture_output=True, text=True) # 赋值result执行命令
+        if result.returncode != 0: # 判断命令是否执行失败
+            raise RuntimeError(f"提取音频失败: {result.stderr}") # 抛出提取音频失败异常
+        return audio_path # 返回音频路径
 
 
 

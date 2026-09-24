@@ -10,6 +10,7 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from core.pipeline import run_pipeline  # 导入流水线函数
 
+# 全局变量
 app = FastAPI() # 创建fastapi应用
 UPLOAD_DIR = Path("tests_video/upload") # 上传文件目录
 OUT_DIR = Path("tests_video/test_video_output") # 输出文件目录
